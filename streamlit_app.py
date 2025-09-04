@@ -1,56 +1,55 @@
 import streamlit as st
-from openai import OpenAI
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
-)
+st.title("💬 Chatbot Cicloset")
+st.write("Chatbot de preguntas frecuentes y recomendaciones de bolsos.")
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+# Preguntas frecuentes y respuestas
+faq = {
+    "¿Cuáles son los métodos de pago?": "Aceptamos tarjetas de crédito, débito y pagos en efectivo.",
+    "¿Hacen envíos a todo el país?": "Sí, realizamos envíos a toda Colombia.",
+    "¿Cómo puedo rastrear mi pedido?": "Recibirás un correo con el enlace de rastreo después de tu compra.",
+    "hola": "¡Hola! Bienvenido a Cicloset. ¿En qué puedo ayudarte hoy?",
+    "buenos días": "¡Buenos días! Gracias por visitarnos. ¿Buscas algún bolso en especial?",
+    "buenas tardes": "¡Buenas tardes! ¿Te gustaría ver nuestras recomendaciones de bolsos?",
+    "buenas noches": "¡Buenas noches! Si tienes dudas sobre nuestros productos, estoy aquí para ayudarte.",
+}
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+# Recomendaciones simples según gustos
+def recomendar_bolso(gusto):
+    if "deportivo" in gusto.lower():
+        return "Te recomendamos el Bolso Deportivo Azul de Cicloset."
+    elif "elegante" in gusto.lower():
+        return "Te recomendamos el Bolso Elegante Negro de Cicloset."
+    elif "casual" in gusto.lower():
+        return "Te recomendamos el Bolso Casual Beige de Cicloset."
+    else:
+        return "Visita https://cicloset.com.co/ para ver todos nuestros bolsos y encuentra el que más te guste."
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# Mensaje de bienvenida para nuevos usuarios
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": "¡Bienvenido a Cicloset! 😊\n\nGracias por visitarnos. Si tienes alguna pregunta sobre nuestros bolsos o quieres una recomendación personalizada, escríbeme. También puedes visitar nuestra tienda en [cicloset.com.co](https://cicloset.com.co/)."
+    })
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
+if prompt := st.chat_input("¿En qué te puedo ayudar?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    # Respuesta automática
+    respuesta = faq.get(prompt)
+    if not respuesta:
+        if "bolso" in prompt.lower() or "gusto" in prompt.lower():
+            respuesta = recomendar_bolso(prompt)
+        else:
+            respuesta = "Lo siento, no entiendo tu pregunta. ¿Puedes reformularla? O visita nuestra tienda en [cicloset.com.co](https://cicloset.com.co/) para más información."
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
-
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+    with st.chat_message("assistant"):
+        st.markdown(respuesta)
+    st.session_state.messages.append({"role": "assistant", "content": respuesta})
